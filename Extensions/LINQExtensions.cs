@@ -1,6 +1,8 @@
 namespace Nezbo.AdventOfCode.Extensions;
 
-public static class LINQExtensions {
+public static class LINQExtensions 
+{
+    #region Grouping
 
     public static IEnumerable<IEnumerable<T>> SplitEvery<T>(this IEnumerable<T> source, int count){
         return source.SplitAt((i,e) => i % count == count - 1, true);
@@ -28,4 +30,25 @@ public static class LINQExtensions {
         if(block.Count > 0)
             yield return block;
     }
+
+    #endregion
+
+    #region Looping
+
+    public static void ForEach<T>(this IEnumerable<T> enumeration, Action<T,int> action)
+    {
+        int i = 0;
+        foreach(T item in enumeration)
+        {
+            action(item, i);
+            i++;
+        }
+    }
+
+        public static void ForEach<T>(this IEnumerable<T> enumeration, Action<T> action)
+    {
+        enumeration.ForEach((e,i) => action(e));
+    }
+
+    #endregion
 }
