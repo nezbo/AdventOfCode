@@ -51,4 +51,16 @@ public static class LINQExtensions
     }
 
     #endregion
+
+    #region Terminal
+
+    public static int Mod(this IEnumerable<int> enumeration){
+        return enumeration.Aggregate(1, (x,y) => x * y);
+    }
+
+    public static long Mod(this IEnumerable<long> enumeration){
+        return enumeration.Aggregate(1L, (x,y) => x * y);
+    }
+
+    #endregion
 }
