@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Nezbo.AdventOfCode;
 using Nezbo.AdventOfCode.Extensions;
 

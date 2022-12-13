@@ -1,4 +1,3 @@
-using System.Numerics;
 using Nezbo.AdventOfCode.Extensions;
 
 namespace Nezbo.AdventOfCode.Solutions;
