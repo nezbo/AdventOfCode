@@ -4,7 +4,8 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        for(int day = 1; day <= 25; day++)
+        int start = args.Length > 0 ? int.Parse(args[0]) : 1;
+        for(int day = start; day <= 25; day++)
         {
             ISolution solution = GetSolutionInstance(day);
             string inputFilename = GetInputFilename(day);
