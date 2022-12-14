@@ -52,6 +52,19 @@ public static class LINQExtensions
 
     #endregion
 
+    #region Indices
+
+    public static IEnumerable<int> IndicesOf<T>(this IEnumerable<T> enumeration, Predicate<T> predicate){
+        int i = 0;
+        foreach(T item in enumeration){
+            if(predicate(item))
+                yield return i;
+            i++;
+        }
+    }
+
+    #endregion
+
     #region Terminal
 
     public static int Mod(this IEnumerable<int> enumeration){
