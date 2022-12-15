@@ -45,9 +45,17 @@ public static class LINQExtensions
         }
     }
 
-        public static void ForEach<T>(this IEnumerable<T> enumeration, Action<T> action)
+    public static void ForEach<T>(this IEnumerable<T> enumeration, Action<T> action)
     {
         enumeration.ForEach((e,i) => action(e));
+    }
+
+    public static void ForEachPair<T>(this IEnumerable<T> enumeration, Action<T,T> action){
+        T prev = enumeration.First();
+        foreach(T item in enumeration.Skip(1)){
+            action(prev,item);
+            prev = item;
+        }
     }
 
     #endregion
