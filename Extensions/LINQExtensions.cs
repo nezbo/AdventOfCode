@@ -2,6 +2,14 @@ namespace Nezbo.AdventOfCode.Extensions;
 
 public static class LINQExtensions 
 {
+    #region Filter
+
+    public static IEnumerable<T> Except<T>(this IEnumerable<T> enumeration, Predicate<T> predicate){
+        return enumeration.Where(t => !predicate(t));
+    }
+
+    #endregion
+
     #region Grouping
 
     public static IEnumerable<IEnumerable<T>> SplitEvery<T>(this IEnumerable<T> source, int count){

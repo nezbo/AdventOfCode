@@ -27,7 +27,7 @@ internal class Day14Solution : ISolution
 
     private int SimulateSand(SparseArray2D<char> cave, bool virtualFloor = false)
     {
-        int virtualFloorY = cave.CurrentHeight + 1;
+        int virtualFloorY = cave.YMax + 1;
         int i = 0;
         while(true){
             (int,int) pos = (500,0);
@@ -49,7 +49,7 @@ internal class Day14Solution : ISolution
 
     private (int,int) MoveGrain(SparseArray2D<char> cave, (int, int) pos)
     {
-        if(pos.Item2 + 1 == cave.CurrentHeight
+        if(pos.Item2 + 1 == cave.YMax + 1
             || cave[pos.Item1,pos.Item2 + 1] == '.')
             return (pos.Item1,pos.Item2 + 1);
         if(cave[pos.Item1 - 1,pos.Item2 + 1] == '.')
@@ -62,13 +62,13 @@ internal class Day14Solution : ISolution
     private bool IsWithinCave(SparseArray2D<char> cave, (int, int) pos)
     {
         return pos.Item1 >= 0 && pos.Item2 >= 0
-            && pos.Item1 < cave.CurrentWidth
-            && pos.Item2 < cave.CurrentHeight;
+            && pos.Item1 <= cave.XMax
+            && pos.Item2 <= cave.YMax;
     }
 
     private void PrintCave(SparseArray2D<char> cave, int xMin, int xMax)
     {
-        for(int y = 0; y < cave.CurrentHeight; y++){
+        for(int y = 0; y <= cave.YMax; y++){
             Console.WriteLine(new string(Enumerable.Range(xMin,xMax-xMin+1).Select(x => cave[x,y]).ToArray()));
         }
     }
