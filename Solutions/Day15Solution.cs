@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Numerics;
-using Nezbo.AdventOfCode.Collections;
 using Nezbo.AdventOfCode.Extensions;
 
 namespace Nezbo.AdventOfCode.Solutions;
