@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Numerics;
 using Nezbo.AdventOfCode.Collections;
 using Nezbo.AdventOfCode.Extensions;
 
@@ -16,35 +18,31 @@ internal class Day15Solution : ISolution
 
     public string SolvePartTwo(string[] input)
     {
-        Cave cave = ParseSensors(input);
+        int range = 4_000_000;
+        Cave cave = ParseSensors(input, 0, range);
         cave.MarkEmptySpaces();
-        var pos = FindSingleUnknownSpace(cave);
-        return (4000000 * pos.Item1 + pos.Item2).ToString();
+        var pos = FindSingleUnknownSpace(cave, range);
+        return (4000000 * new BigInteger(pos.Item1) + new BigInteger(pos.Item2)).ToString();
     }
 
-    private static (int,int) FindSingleUnknownSpace(Cave cave)
+    private static (int,int) FindSingleUnknownSpace(Cave cave, int yMax)
     {
-        int i = 0;
-        return Enumerable.Range(0, 4_000_000)
+        var yMatch = Enumerable.Range(0, yMax)
             .AsParallel()
             .AsUnordered()
-            .Select(y =>
-            {
-                int x = cave.GetUnknownSpaces(y, 0, 4_000_000).FirstOrDefault();
-                if(i++ % 1_000 == 0)
-                    Console.WriteLine($"{i*100 / 4_000_000}% done");
-                if(x != 0)
-                    return (x,y);
-                return (-1,-1);
-            })
-            .Where(t => t.Item1 >= 0 && t.Item2 >= 0)
-            .Take(1)
+            .Where(y => cave.RowEmptyRanges[y].Sum(l => l.Length) <= yMax)
             .FirstOrDefault();
+        return FindGap(cave, yMatch);
     }
 
-    private Cave ParseSensors(string[] input)
+    private static (int, int) FindGap(Cave cave, int y)
     {
-        var cave = new Cave();
+        return (cave.RowEmptyRanges[y][0].Max + 1, y);
+    }
+
+    private Cave ParseSensors(string[] input, int min = int.MinValue, int max = int.MaxValue)
+    {
+        var cave = new Cave(min,max);
         input
             .Except(string.IsNullOrEmpty)
             .Select(ParseCoordinates)
@@ -65,55 +63,56 @@ internal class Day15Solution : ISolution
         return int.Parse(str.Split('=').Last().TrimEnd(',', ':'));
     }
 
-    private struct Line{
-        public int Min;
-        public int Max;
+    private record Line(int Min, int Max)
+    {
+        public int Length => Max - Min + 1;
     }
 
     private class Cave {
-        //public SparseArray2D<char> Map { get; } = new ('.');
         public Dictionary<(int,int),(int,int)> ClosestBeacon = new ();
-        public Dictionary<int,List<Line>> RowEmptyRanges = new Dictionary<int, List<Line>>();
+        public IDictionary<int,List<Line>> RowEmptyRanges = new ConcurrentDictionary<int, List<Line>>();
+
+        public int RangeMin { get; }
+        public int RangeMax { get; }
+
+        public Cave(int rangeMin = int.MinValue, int rangeMax = int.MaxValue)
+        {
+            RangeMin = rangeMin;
+            RangeMax = rangeMax;
+        }
 
         public void AddSensor((int,int) sensor, (int,int) closestBeacon){
-                //Map[sensor.Item1,sensor.Item2] = 'S';
-                //Map[closestBeacon.Item1,closestBeacon.Item2] = 'B';
 
                 ClosestBeacon[sensor] = closestBeacon;
         }
 
         public void MarkEmptySpaces()
         {
-            foreach(var beacon in ClosestBeacon){
+            Parallel.ForEach(ClosestBeacon, beacon => {
                 //Console.WriteLine($"Starting beacon ({beacon.Key.Item1},{beacon.Key.Item2})");
                 var c = beacon.Key;
                 var dist = beacon.Key.ManhattanDistance(beacon.Value);
+
                 //Console.WriteLine($"Distance = {dist}");
-                for(int y = c.Item2 - dist; y <= c.Item2 + dist; y++){
+                for(int y = Math.Max(RangeMin, c.Item2 - dist); y <= Math.Min(RangeMax, c.Item2 + dist); y++){
                     //Console.WriteLine($"Marking line {y}");
-                    int xMin = c.Item1 - dist + Math.Abs(y - c.Item2);
-                    int xMax = c.Item1 + dist - Math.Abs(y - c.Item2);
+                    int xMin = Math.Max(RangeMin, c.Item1 - dist + Math.Abs(y - c.Item2));
+                    int xMax = Math.Min(RangeMax, c.Item1 + dist - Math.Abs(y - c.Item2));
                     AddEmptyRange(y, xMin, xMax);
-                    /*for(int x = c.Item1 - dist + Math.Abs(y - c.Item2); x <= c.Item1 + dist - Math.Abs(y - c.Item2); x++){
-                        if(Map[x,y] == '.'){
-                            Map[x,y] = '#';
-                            i++;
-                        }
-                    }*/
                 }
-            }
+            });
         }
 
         public IEnumerable<int> GetConfirmedEmptySpaces(int y){
             var ranges = RowEmptyRanges[y];
-            int xMin = ranges.Min(r => r.Item1);
-            int xMax = ranges.Max(r => r.Item2);
+            int xMin = ranges.Min(r => r.Min);
+            int xMax = ranges.Max(r => r.Max);
             HashSet<int> markers = new HashSet<int>(ClosestBeacon
                 .SelectMany(sb => new List<(int,int)>{ sb.Key, sb.Value })
                 .Where(t => t.Item2 == y)
                 .Select(t => t.Item1));
             return Enumerable.Range(xMin, xMax - xMin + 1)
-                .Where(i => !markers.Contains(i) && ranges.Any(r => XIsWithin(i, r.Item1, r.Item2)));
+                .Where(i => !markers.Contains(i) && ranges.Any(r => XIsWithin(i, r.Min, r.Max)));
         }
 
         public IEnumerable<int> GetUnknownSpaces(int y, int xMin, int xMax){
@@ -123,7 +122,7 @@ internal class Day15Solution : ISolution
                 .Where(t => t.Item2 == y)
                 .Select(t => t.Item1));
             return Enumerable.Range(xMin, xMax - xMin + 1)
-                .Where(i => !markers.Contains(i) && ranges.All(r => !XIsWithin(i, r.Item1, r.Item2)));
+                .Where(i => !markers.Contains(i) && ranges.All(r => !XIsWithin(i, r.Min, r.Max)));
         }
 
         private bool XIsWithin(int value, int min, int max)
@@ -132,22 +131,51 @@ internal class Day15Solution : ISolution
         }
 
         private void AddEmptyRange(int y, int xMin, int xMax){
-            if(!RowEmptyRanges.ContainsKey(y))
-                RowEmptyRanges.Add(y, new List<(int,int)>());
-            AddRange(RowEmptyRanges[y],xMin,xMax);
-        }
-
-        private void AddRange(List<(int, int)> areas, int xMin, int xMax)
-        {
-            if(areas.Any(a => a.Item1 <= xMin && a.Item2 >= xMax))
-                return;
-
-            foreach(Point a in areas){
-                // appends to a line
-                if(a.Item1 < xMin && a.Item2 >= xMin){
-                    a.Item2 = xMax;
+            lock(RowEmptyRanges){
+                if(!RowEmptyRanges.ContainsKey(y)){
+                        RowEmptyRanges.Add(y, new List<Line>());
                 }
             }
+
+            lock(RowEmptyRanges[y]){
+                AddRange(RowEmptyRanges[y],xMin,xMax);
+            }
+        }
+
+        private void AddRange(List<Line> areas, int xMin, int xMax)
+        {
+            if(areas.Any(a => a.Min <= xMin && a.Max >= xMax))
+                return;
+
+            List<int> overlaps = new ();
+            areas.ForEach((a,i) => {
+                if((xMin <= a.Max + 1 && xMax > a.Max) // appends to a line
+                    || (xMin < a.Min && xMax >= a.Min - 1) // prepends to a line
+                    )
+                {
+                    overlaps.Add(i);
+                }
+            });
+
+            if(overlaps.Count == 0){
+                int index = areas.Count == 0 ? 0 : areas.FindIndex(0, l => l.Min > xMin);
+                if(index < 0)
+                    index = areas.Count;
+                areas.Insert(index, new Line(xMin,xMax));
+            }
+            else{
+                int min = Math.Min(xMin, overlaps.Min(i => areas[i].Min));
+                int max = Math.Max(xMax, overlaps.Max(i => areas[i].Max));
+                overlaps.AsEnumerable().Reverse().ForEach(areas.RemoveAt);
+                areas.Insert(overlaps.Min(), new Line(min,max));
+            }
+        }
+
+        public int CountSensorsAndBeacons(int y)
+        {
+            return ClosestBeacon.Keys
+                .Union(ClosestBeacon.Values)
+                .Count(p => p.Item2 == y);
         }
     }
 }
